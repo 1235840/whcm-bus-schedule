@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>武音班车助手</title>
+    <style>
+        /* --- 核心基础样式 --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #F9FAFB; color: #1F2937; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        
+        :root { --wuyin-red: #991B1B; --wuyin-red-light: #B91C1C; --bg-active: #FEF2F2; --border-active: #FCA5A5; --text-gray: #4B5563; --gold-border: #FFD700; }
+        
+        /* 顶部 Header */
+        .header { background-color: var(--wuyin-red); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 30; flex-shrink: 0; }
+        .logo-area { display: flex; align-items: center; gap: 10px; }
+        .logo-circle { width: 32px; height: 32px; background: white; color: var(--wuyin-red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .app-title { font-size: 18px; font-weight: 700; line-height: 1; display: flex; flex-direction: column; }
+        
+        /* 切换按钮样式 */
+        .day-tag { 
+            font-size: 11px; background: rgba(255,255,255,0.25); padding: 3px 8px; border-radius: 12px; 
+            width: fit-content; margin-top: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);
+            display: flex; align-items: center; gap: 4px; transition: background 0.2s;
+        }
+        .day-tag:active { background: rgba(255,255,255,0.4); }
+        .day-tag::after { content: '↻'; font-size: 10px; opacity: 0.8; }
+
+        /* 顶部右侧 */
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .checkbox-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: rgba(255,255,255,0.9); }
+        .checkbox-label input { display: none; }
+        .custom-check {
+            width: 18px; height: 18px;
+            border: 1px solid rgba(255,255,255,0.6); border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            position: relative; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .checkbox-label input:checked + .custom-check { background: white; border-color: white; }
+        .checkbox-label input:checked + .custom-check::after {
+            content: ''; width: 10px; height: 5px;
+            border-left: 2px solid var(--wuyin-red);
+            border-bottom: 2px solid var(--wuyin-red);
+            transform: rotate(-45deg); margin-bottom: 2px;
+        }
+        .my-trips-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; padding: 4px 10px; font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+        /* 导航栏 */
+        .nav-container { background: white; border-bottom: 1px solid #E5E7EB; padding: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); z-index: 20; flex-shrink: 0; }
+        .nav-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .nav-btn { border: 1px solid transparent; background: white; padding: 10px; border-radius: 8px; font-size: 14px; display: flex; justify-content: center; align-items: center; transition: all 0.2s; cursor: pointer; }
+        .nav-active { background-color: var(--bg-active); color: var(--wuyin-red); border-color: var(--border-active); font-weight: 700; }
+        .nav-inactive { color: var(--text-gray); border-color: #E5E7EB; }
+        .arrow { margin: 0 4px; font-size: 10px; opacity: 0.5; }
+
+        /* 内容区 */
+        .content-area { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 40px; }
+        .cards-wrapper { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+        
+        /* 卡片样式 (几何对齐) */
+        .card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #F3F4F6; display: flex; gap: 16px; }
+        .card-left { width: 45px; border-right: 1px solid #F3F4F6; display: flex; flex-direction: column; align-items: center; padding-top: 0; flex-shrink: 0; }
+        .hour-aligner { height: 52px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .hour-text { font-size: 20px; font-weight: 700; color: #1F2937; line-height: 1; }
+        .hour-label { font-size: 10px; color: #9CA3AF; margin-top: 2px; }
+        .card-right { flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; }
+        
+        /* 分钟气泡 */
+        .chip { width: 52px; height: 52px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; transition: all 0.2s; border: 1px solid transparent; }
+        .min-text { font-size: 18px; font-weight: 700; line-height: 1; }
+        .car-text { font-size: 9px; margin-top: 3px; opacity: 0.8; font-weight: 500; }
+        
+        /* 状态样式 */
+        .status-future { background: white; color: #1F2937; border-color: #E5E7EB; }
+        .status-past-gray { background: #F3F4F6; color: #E5E7EB; }
+        
+        .status-next {
+            background: linear-gradient(135deg, var(--wuyin-red-light) 0%, var(--wuyin-red) 100%) !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(185, 28, 28, 0.4);
+            transform: scale(1.08); z-index: 5;
+            border: none !important;
+        }
+        .status-next .car-text { color: rgba(255,255,255,0.9) !important; }
+
+        .booked-border {
+            border: 2px solid var(--gold-border) !important;
+            position: relative;
+        }
+        .booked-border::after {
+            content: '⏰'; font-size: 8px; position: absolute; top: 1px; right: 2px;
+        }
+        .status-next.booked-border {
+            box-shadow: 0 0 0 2px var(--gold-border), 0 4px 12px rgba(185, 28, 28, 0.4) !important;
+            border: none !important;
+        }
+
+        /* 弹窗样式 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 50; display: none; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+        .modal { background: white; width: 85%; max-width: 340px; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popIn 0.2s; display: flex; flex-direction: column; max-height: 80vh; }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; color: #1F2937; }
+        .modal-subtitle { font-size: 13px; color: #6B7280; margin-bottom: 20px; border-bottom: 1px solid #F3F4F6; padding-bottom: 10px; }
+        
+        .reminder-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+        .reminder-btn { padding: 10px; border-radius: 8px; border: 1px solid #E5E7EB; background: #F9FAFB; color: #374151; font-size: 13px; cursor: pointer; text-align: center; }
+        .reminder-btn.selected { background: var(--wuyin-red); color: white; border-color: var(--wuyin-red); }
+        
+        .custom-input-group { display: flex; align-items: center; background: #F3F4F6; border-radius: 8px; padding: 4px 12px; margin-bottom: 20px; border: 1px solid transparent; }
+        .custom-input-group:focus-within { border-color: var(--wuyin-red); background: white; }
+        .custom-input { border: none; background: transparent; width: 100%; padding: 8px 0; font-size: 16px; font-weight: bold; color: #374151; text-align: center; }
+        
+        .action-btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 10px; }
+        .btn-confirm { background: var(--wuyin-red); color: white; }
+        .btn-delete { background: white; border: 1px solid #EF4444; color: #EF4444; margin-top: 8px; }
+        .btn-close { background: transparent; color: #9CA3AF; margin-top: 5px; }
+
+        .booking-list { overflow-y: auto; flex: 1; }
+        .booking-item { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--wuyin-red); }
+        .booking-info { display: flex; flex-direction: column; }
+        .booking-route { font-size: 12px; color: #6B7280; }
+        .booking-time { font-size: 18px; font-weight: 800; color: #1F2937; }
+        .booking-note { font-size: 11px; color: var(--wuyin-red); background: #FEF2F2; padding: 2px 6px; border-radius: 4px; margin-top: 4px; width: fit-content; }
+        .booking-action { background: white; border: 1px solid #E5E7EB; padding: 6px 12px; border-radius: 6px; font-size: 12px; color: #374151; }
+    </style>
+</head>
+<body>
+
+    <!-- 弹窗组件 -->
+    <div class="modal-overlay" id="reminderModal">
+        <div class="modal">
+            <div class="modal-title">设置提醒</div>
+            <div class="modal-subtitle" id="modalSub"></div>
+            <div class="reminder-grid">
+                <div class="reminder-btn" onclick="selectQuickTime(0, this)">准时</div>
+                <div class="reminder-btn" onclick="selectQuickTime(5, this)">提前 5 分</div>
+                <div class="reminder-btn" onclick="selectQuickTime(15, this)">提前 15 分</div>
+                <div class="reminder-btn" onclick="selectQuickTime(30, this)">提前 30 分</div>
+            </div>
+            <div class="custom-input-group">
+                <input type="number" id="customMinutes" class="custom-input" placeholder="自定义" value="10" oninput="clearQuickSelection()">
+                <span style="font-size: 12px; color: #9CA3AF;">分钟前</span>
+            </div>
+            <button class="action-btn btn-confirm" onclick="confirmReminder()">确认预约</button>
+            <button class="action-btn btn-close" onclick="closeModal('reminderModal')">取消</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="myBookingsModal">
+        <div class="modal" style="height: 60vh;">
+            <div class="modal-title">我的预约</div>
+            <div class="modal-subtitle">已设置的提醒记录</div>
+            <div class="booking-list" id="bookingListContainer"></div>
+            <button class="action-btn btn-close" onclick="closeModal('myBookingsModal')">关闭</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <div class="modal-title">管理预约</div>
+            <div class="modal-subtitle" id="editSub"></div>
+            <button class="action-btn btn-confirm" onclick="openModifyReminder()">修改时间</button>
+            <button class="action-btn btn-delete" onclick="deleteCurrentBooking()">删除预约</button>
+            <button class="action-btn btn-close" onclick="closeModal('editModal')">关闭</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="confirmDeleteModal">
+        <div class="modal">
+            <div class="modal-title" style="color:#EF4444;">确认删除?</div>
+            <div class="modal-subtitle">删除后将不再提醒</div>
+            <button class="action-btn btn-delete" onclick="execDelete()">确认删除</button>
+            <button class="action-btn btn-close" onclick="closeModal('confirmDeleteModal')">取消</button>
+        </div>
+    </div>
+
+    <!-- 主界面 -->
+    <div class="header">
+        <div class="logo-area">
+            <div class="logo-circle">武</div>
+            <div class="app-title">
+                <span>武音班车</span>
+                <span class="day-tag" id="day-tag" onclick="toggleDayMode()">加载中...</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <label class="checkbox-label">
+                <input type="checkbox" id="history-checkbox">
+                <div class="custom-check"></div>
+                显示已过
+            </label>
+            <div class="my-trips-btn" onclick="openMyBookings()">
+                <span>📅</span> 预约
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-container">
+        <div class="nav-grid" id="nav-grid"></div>
+    </div>
+
+    <div class="content-area">
+        <div class="cards-wrapper" id="cards-area"></div>
+    </div>
+
+    <script>
+        // --- 1. 数据 ---
+        const weekdayData = [
+            { id: "route_bj_jfl", nameFrom: "滨江", nameTo: "解放路", table: [["07:30","1"], ["07:40","2"], ["07:45","3"], ["07:50","4"], ["07:53","5"], ["07:56","6"], ["08:00","1"], ["08:10","2"], ["08:20","3"], ["08:30","4"], ["08:40","5"], ["08:50","6"], ["09:00","1"], ["09:10","2"], ["09:20","3"], ["09:30","4"], ["09:35","5"], ["09:40","6"], ["09:43","1"], ["09:46","2"], ["09:49","3"], ["09:52","4"], ["09:55","5"], ["10:00","6"], ["10:10","1"], ["10:20","2"], ["10:30","3"], ["10:40","4"], ["10:50","5"], ["11:00","6"], ["11:12","1"], ["11:22","2"], ["11:33","3"], ["11:43","4"], ["11:46","5"], ["11:49","6"], ["11:52","1"], ["11:55","2"], ["12:00","3"], ["12:10","4"], ["12:20","5"], ["12:30","6"], ["12:40","1"], ["12:50","2"], ["13:00","3"], ["13:10","4"], ["13:20","5"], ["13:30","6"], ["13:35","1"], ["13:40","2"], ["13:45","3"], ["13:50","4"], ["13:55","5"], ["14:00","6"], ["14:10","1"], ["14:20","2"], ["14:30","3"], ["14:40","4"], ["14:50","5"], ["15:00","6"], ["15:10","1"], ["15:20","2"], ["15:30","3"], ["15:36","4"], ["15:42","5"], ["15:46","6"], ["15:49","1"], ["15:52","2"], ["15:55","3"], ["16:00","4"], ["16:10","5"], ["16:20","6"], ["16:30","1"], ["16:40","2"], ["16:50","3"], ["17:00","4"], ["17:10","5"], ["17:20","6"], ["17:30","1"], ["17:40","2"], ["17:43","3"], ["17:46","4"], ["17:49","5"], ["17:52","6"], ["17:55","1"], ["18:00","2"], ["18:10","3"], ["18:20","4"], ["18:30","5"], ["18:35","6"], ["18:40","1"], ["18:45","2"], ["18:50","3"], ["19:00","4"], ["20:00","5"], ["20:10","6"], ["20:20","1"], ["20:30","2"], ["20:40","3"], ["20:43","4"], ["20:46","5"], ["20:49","6"], ["20:52","1"], ["20:55","2"], ["21:00","3"], ["21:10","4"], ["21:20","5"], ["21:32","6"], ["21:42","3"], ["21:48","4"], ["21:54","5"], ["22:00","6"]] },
+            { id: "route_bj_smk", nameFrom: "滨江", nameTo: "司门口", table: [["07:30","1"], ["07:40","2"], ["07:50","3"], ["08:00","4"], ["08:15","1"], ["08:30","2"], ["08:45","3"], ["09:00","4"], ["09:15","1"], ["09:30","2"], ["09:45","3"], ["10:00","4"], ["10:15","1"], ["10:30","2"], ["10:45","3"], ["11:00","4"], ["11:15","1"], ["11:30","2"], ["11:45","3"], ["11:52","4"], ["12:00","1"], ["12:15","2"], ["12:30","3"], ["12:45","4"], ["13:00","1"], ["13:15","2"], ["13:30","3"], ["13:45","4"], ["14:00","1"], ["14:15","2"], ["14:30","3"], ["14:45","4"], ["15:00","1"], ["15:15","2"], ["15:30","3"], ["15:45","4"], ["16:00","1"], ["16:15","2"], ["16:30","3"], ["16:45","4"], ["17:00","1"], ["17:15","2"], ["17:30","3"], ["17:45","4"], ["17:52","1"], ["18:00","2"], ["18:15","3"], ["18:30","4"], ["18:45","1"], ["19:00","2"], ["19:15","3"], ["19:30","4"], ["19:45","1"], ["20:00","2"], ["20:15","3"], ["20:30","4"], ["20:45","1"], ["20:52","2"], ["21:00","3"], ["21:20","4"], ["21:40","3"], ["22:00","4"]] },
+            { id: "route_jfl_bj", nameFrom: "解放路", nameTo: "滨江", table: [["07:20","1"], ["07:30","2"], ["07:35","3"], ["07:40","4"], ["07:43","5"], ["07:46","6"], ["07:49","1"], ["07:52","2"], ["07:55","3"], ["08:00","4"], ["08:10","5"], ["08:20","6"], ["08:30","1"], ["08:40","2"], ["08:50","3"], ["09:00","4"], ["09:10","5"], ["09:20","6"], ["09:30","1"], ["09:35","2"], ["09:40","3"], ["09:43","4"], ["09:46","5"], ["09:49","6"], ["09:52","1"], ["09:55","2"], ["10:00","3"], ["10:10","4"], ["10:20","5"], ["10:30","6"], ["10:40","1"], ["10:50","2"], ["11:00","3"], ["11:10","4"], ["11:20","5"], ["11:30","6"], ["11:40","1"], ["11:50","2"], ["12:00","3"], ["12:10","4"], ["12:20","5"], ["12:30","6"], ["12:40","1"], ["12:50","2"], ["13:00","3"], ["13:10","4"], ["13:20","5"], ["13:30","6"], ["13:35","1"], ["13:40","2"], ["13:43","3"], ["13:46","4"], ["13:49","5"], ["13:52","6"], ["13:55","1"], ["14:00","2"], ["14:10","3"], ["14:20","4"], ["14:30","5"], ["14:40","6"], ["14:50","1"], ["15:00","2"], ["15:10","3"], ["15:20","4"], ["15:30","5"], ["15:35","6"], ["15:40","1"], ["15:43","2"], ["15:46","3"], ["15:49","4"], ["15:52","5"], ["15:55","6"], ["16:00","1"], ["16:10","2"], ["16:20","3"], ["16:30","4"], ["16:40","5"], ["16:50","6"], ["17:00","1"], ["17:10","2"], ["17:20","3"], ["17:30","4"], ["17:40","5"], ["17:50","6"], ["18:00","1"], ["18:10","2"], ["18:20","3"], ["18:30","4"], ["18:35","5"], ["18:40","6"], ["18:43","1"], ["18:46","2"], ["18:49","3"], ["18:52","4"], ["18:55","5"], ["19:00","6"], ["19:10","1"], ["19:20","2"], ["19:30","3"], ["19:40","4"], ["19:50","5"], ["20:00","6"], ["20:10","1"], ["20:20","2"], ["20:30","3"], ["20:40","4"], ["20:50","5"], ["21:00","6"], ["21:15","4"], ["21:30","5"], ["21:45","6"]] },
+            { id: "route_smk_bj", nameFrom: "司门口", nameTo: "滨江", table: [["07:20", "1"], ["07:30", "2"], ["07:40", "3"], ["07:48", "4"], ["08:00", "1"], ["08:15", "2"], ["08:30", "3"], ["08:45", "4"], ["09:00", "1"], ["09:15", "2"], ["09:30", "3"], ["09:40", "4"], ["09:48", "1"], ["10:00", "2"], ["10:15", "3"], ["10:30", "4"], ["10:45", "1"], ["11:00", "2"], ["11:15", "3"], ["11:30", "4"], ["11:45", "1"], ["12:00", "2"], ["12:15", "3"], ["12:30", "4"], ["12:45", "1"], ["13:00", "2"], ["13:15", "3"], ["13:30", "4"], ["13:40", "1"], ["13:48", "2"], ["14:00", "3"], ["14:15", "4"], ["14:30", "1"], ["14:45", "2"], ["15:00", "3"], ["15:15", "4"], ["15:30", "1"], ["15:40", "2"], ["15:48", "3"], ["16:00", "4"], ["16:15", "1"], ["16:30", "2"], ["16:45", "3"], ["17:00", "4"], ["17:15", "1"], ["17:30", "2"], ["17:45", "3"], ["18:00", "4"], ["18:15", "1"], ["18:30", "2"], ["18:40", "3"], ["18:48", "4"], ["19:00", "1"], ["19:15", "2"], ["19:30", "3"], ["19:45", "4"], ["20:00", "1"], ["20:15", "2"], ["20:30", "3"], ["20:45", "4"]] }
+        ];
+
+        function generateWeekendData() {
+            const routes = [
+                { id: "route_bj_jfl", nameFrom: "滨江", nameTo: "解放路", isBinjiangOrigin: true },
+                { id: "route_bj_smk", nameFrom: "滨江", nameTo: "司门口", isBinjiangOrigin: true },
+                { id: "route_jfl_bj", nameFrom: "解放路", nameTo: "滨江", isBinjiangOrigin: false },
+                { id: "route_smk_bj", nameFrom: "司门口", nameTo: "滨江", isBinjiangOrigin: false }
+            ];
+            return routes.map(route => {
+                const table = [];
+                const endHour = route.isBinjiangOrigin ? 22 : 21;
+                // 7:30 是半点 -> 2号车
+                table.push(["07:30", "2"]); 
+                for (let h = 8; h <= endHour; h++) {
+                    const hour = h.toString().padStart(2, '0');
+                    if (h === 22) { 
+                        // 22:00 -> 1号车
+                        table.push(["22:00", "1"]); 
+                    } else { 
+                        // 整点 -> 1号, 半点 -> 2号
+                        table.push([`${hour}:00`, "1"]); 
+                        table.push([`${hour}:30`, "2"]); 
+                    }
+                }
+                return { id: route.id, nameFrom: route.nameFrom, nameTo: route.nameTo, table: table };
+            });
+        }
+
+        // --- 2. 状态变量 ---
+        const realDay = new Date().getDay();
+        const isRealWeekend = (realDay === 0 || realDay === 6);
+        let isWeekendMode = isRealWeekend; 
+        
+        let activeIndex = 0;
+        let showHistory = false;
+        
+        // 状态记忆
+        let savedHistoryState = false; 
+        let isAutoSwitched = false; 
+        
+        let currentBooking = { routeFrom: "", routeTo: "", time: "", id: "" };
+        let deleteIdTarget = null;
+        const STORAGE_KEY = 'wuyin_bus_bookings_v2';
+
+        function initApp() {
+            updateDayTag();
+            renderNav();
+            renderCards();
+        }
+
+        function toggleDayMode() {
+            const isNowRealMode = (isWeekendMode === isRealWeekend);
+            if (isNowRealMode) { 
+                savedHistoryState = document.getElementById('history-checkbox').checked;
+                if (!document.getElementById('history-checkbox').checked) {
+                    document.getElementById('history-checkbox').checked = true;
+                    isAutoSwitched = true; 
+                } else {
+                    isAutoSwitched = false;
+                }
+            } else {
+                if (isAutoSwitched) {
+                    document.getElementById('history-checkbox').checked = savedHistoryState;
+                    isAutoSwitched = false;
+                }
+            }
+            isWeekendMode = !isWeekendMode;
+            showHistory = document.getElementById('history-checkbox').checked;
+            updateDayTag();
+            renderNav();
+            renderCards();
+        }
+
+        function updateDayTag() {
+            const tag = document.getElementById('day-tag');
+            tag.innerText = isWeekendMode ? "周末/节假日" : "工作日";
+            tag.style.background = isWeekendMode ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.25)";
+        }
+
+        function getActiveData() { return isWeekendMode ? generateWeekendData() : weekdayData; }
+
+        document.getElementById('history-checkbox').addEventListener('change', (e) => {
+            showHistory = e.target.checked;
+            isAutoSwitched = false; 
+            renderCards();
+        });
+
+        // --- 核心渲染逻辑 ---
+        function renderCards() {
+            const container = document.getElementById('cards-area'); container.innerHTML = '';
+            const data = getActiveData();
+            const routeData = data[activeIndex]; const grouped = groupDataByHour(routeData.table);
+            const hours = Object.keys(grouped).sort(); 
+            
+            const now = new Date();
+            const currentTotalMin = now.getHours() * 60 + now.getMinutes();
+            let nextBusFound = false; 
+            const bookedIds = getBookings().map(b => b.id);
+            
+            const isSameDayType = (isWeekendMode === isRealWeekend);
+
+            hours.forEach(hour => {
+                const card = document.createElement('div'); card.className = "card";
+                card.innerHTML = `<div class="card-left"><div class="hour-aligner"><div class="hour-text">${hour}</div><div class="hour-label">点</div></div></div><div class="card-right"></div>`;
+                const right = card.querySelector('.card-right');
+                grouped[hour].forEach(item => {
+                    const [h, m] = item.fullTime.split(':').map(Number); const itemTotalMin = h * 60 + m;
+                    const itemId = routeData.id + "_" + item.fullTime;
+                    const isBookedItem = bookedIds.includes(itemId);
+                    
+                    let statusClass = "status-future";
+
+                    // === 核心逻辑分支 ===
+                    if (!isSameDayType) {
+                        // 穿越模式：今天不是该表单的有效日期
+                        // 逻辑：所有车次都是“无效/不可达”的 -> 视为“已过”
+                        statusClass = showHistory ? "status-future" : "status-past-gray";
+                        // 穿越模式不显示红色高亮
+                    } else {
+                        // 同频模式：正常时间对比
+                        const isPastTime = itemTotalMin < currentTotalMin;
+                        if (isPastTime) {
+                            statusClass = showHistory ? "status-future" : "status-past-gray";
+                        } else if (!nextBusFound) {
+                            statusClass = "status-next";
+                            nextBusFound = true;
+                        }
+                    }
+
+                    let extraClass = "";
+                    if (isBookedItem) { extraClass = "booked-border"; }
+
+                    const chip = document.createElement('div');
+                    chip.className = `chip ${statusClass} ${extraClass}`;
+                    
+                    // 修复：显示车号 (週末逻辑已在 generateWeekendData 中处理)
+                    let contentHtml = `<div class="min-text">${item.m}</div>`;
+                    if (item.car && item.car.trim() !== "") {
+                        contentHtml += `<div class="car-text">${item.car}号</div>`;
+                    }
+                    
+                    chip.innerHTML = contentHtml;
+                    chip.onclick = () => onTimeClick(item.fullTime);
+                    right.appendChild(chip);
+                });
+                container.appendChild(card);
+            });
+            
+            if (isSameDayType) {
+                setTimeout(() => { const nextEl = document.querySelector('.status-next'); if(nextEl) nextEl.scrollIntoView({behavior: "smooth", block: "center"}); }, 100);
+            }
+            if (container.children.length === 0) { container.innerHTML = `<div class="empty-tip">今日班次已全部结束</div>`; }
+        }
+
+        // --- 辅助函数 ---
+        function groupDataByHour(list) { const groups = {}; list.forEach(item => { const [timeStr, car] = item; const [h, m] = timeStr.split(':'); if (!groups[h]) groups[h] = []; groups[h].push({ m, car, fullTime: timeStr }); }); return groups; }
+        function getBookings() { const data = localStorage.getItem(STORAGE_KEY); return data ? JSON.parse(data) : []; }
+        function saveBookingLocal(booking) { const list = getBookings(); const newList = list.filter(b => b.id !== booking.id); newList.push(booking); localStorage.setItem(STORAGE_KEY, JSON.stringify(newList)); }
+        function deleteBookingLocal(id) { const list = getBookings(); const newList = list.filter(b => b.id !== id); localStorage.setItem(STORAGE_KEY, JSON.stringify(newList)); }
+        function isBooked(id) { return getBookings().some(b => b.id === id); }
+        
+        function renderNav() {
+            const container = document.getElementById('nav-grid'); container.innerHTML = '';
+            const data = getActiveData();
+            data.forEach((route, index) => {
+                const btn = document.createElement('div'); const isActive = index === activeIndex;
+                btn.className = `nav-btn ${isActive ? 'nav-active' : 'nav-inactive'}`;
+                btn.innerHTML = `<span>${route.nameFrom}</span><span class="arrow">➜</span><span>${route.nameTo}</span>`;
+                btn.onclick = () => { activeIndex = index; renderNav(); renderCards(); window.scrollTo({top: 0, behavior: 'smooth'}); };
+                container.appendChild(btn);
+            });
+        }
+
+        function onTimeClick(timeStr) {
+            const data = getActiveData(); const route = data[activeIndex];
+            currentBooking = { routeFrom: route.nameFrom, routeTo: route.nameTo, time: timeStr, id: route.id + "_" + timeStr };
+            if (isBooked(currentBooking.id)) {
+                document.getElementById('editSub').innerText = `${route.nameFrom} ➜ ${route.nameTo} (${timeStr})`;
+                document.getElementById('editModal').style.display = 'flex';
+            } else {
+                document.getElementById('modalSub').innerText = `${route.nameFrom} ➜ ${route.nameTo} (${timeStr})`;
+                document.getElementById('reminderModal').style.display = 'flex';
+                document.getElementById('customMinutes').value = "10"; clearQuickSelection(); 
+            }
+        }
+
+        function selectQuickTime(mins, btn) { document.querySelectorAll('.reminder-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('customMinutes').value = mins; }
+        function clearQuickSelection() { document.querySelectorAll('.reminder-btn').forEach(b => b.classList.remove('selected')); }
+        function openModifyReminder() { closeModal('editModal'); document.getElementById('modalSub').innerText = `${currentBooking.routeFrom} ➜ ${currentBooking.routeTo} (${currentBooking.time})`; document.getElementById('reminderModal').style.display = 'flex'; }
+        function confirmReminder() { const minsInput = document.getElementById('customMinutes').value; const mins = minsInput === "" ? 0 : parseInt(minsInput); setAndroidReminder(mins); currentBooking.reminderMins = mins; saveBookingLocal(currentBooking); closeModal('reminderModal'); renderCards(); }
+        function deleteCurrentBooking() { deleteIdTarget = currentBooking.id; closeModal('editModal'); document.getElementById('confirmDeleteModal').style.display = 'flex'; }
+        function deleteFromList(id) { deleteIdTarget = id; document.getElementById('confirmDeleteModal').style.display = 'flex'; }
+        function execDelete() { if(deleteIdTarget) { deleteBookingLocal(deleteIdTarget); closeModal('confirmDeleteModal'); if(document.getElementById('myBookingsModal').style.display === 'flex') { openMyBookings(); } renderCards(); } }
+        function setAndroidReminder(minutesBefore) { if (typeof android !== 'undefined') { const title = `班车: ${currentBooking.routeFrom}->${currentBooking.routeTo}`; const description = `班车将在 ${currentBooking.time} 发车`; const now = new Date(); const [h, m] = currentBooking.time.split(':').map(Number); const busDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0); if (busDate < now) { busDate.setDate(busDate.getDate() + 1); } const reminderTime = busDate.getTime() - (minutesBefore * 60 * 1000); android.addCalendarEvent(title, description, reminderTime); } }
+        function openMyBookings() { const list = getBookings(); const container = document.getElementById('bookingListContainer'); container.innerHTML = ''; if (list.length === 0) { container.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">暂无预约记录</div>'; } else { list.forEach(b => { const div = document.createElement('div'); div.className = 'booking-item'; const minText = b.reminderMins == 0 ? "准时" : `提前${b.reminderMins}分`; div.innerHTML = `<div class="booking-info"><span class="booking-route">${b.routeFrom} ➜ ${b.routeTo}</span><span class="booking-time">${b.time}</span><span class="booking-note">⏰ ${minText}提醒</span></div><button class="booking-action" onclick="deleteFromList('${b.id}')">删除</button>`; container.appendChild(div); }); } document.getElementById('myBookingsModal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        initApp();
+        setInterval(renderCards, 60000);
+    </script>
+</body>
+</html>
+
