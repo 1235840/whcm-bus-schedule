@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>武音班车助手</title>
+    
+    <!-- ✅ 新增：设置网页图标 (浏览器标签页显示) -->
+    <link rel="icon" href="logo.png" type="image/png">
+    <!-- ✅ 新增：设置苹果桌面图标 (添加到主屏幕时显示) -->
+    <link rel="apple-touch-icon" href="logo.png">
+
     <style>
         /* --- 核心基础样式 --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
@@ -15,10 +21,27 @@
         /* 顶部 Header */
         .header { background-color: var(--wuyin-red); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 30; flex-shrink: 0; }
         .logo-area { display: flex; align-items: center; gap: 10px; }
-        .logo-circle { width: 32px; height: 32px; background: white; color: var(--wuyin-red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        
+        /* Logo 图片样式 */
+        .logo-img {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid rgba(255,255,255,0.2);
+            object-fit: cover;
+            display: block;
+        }
+        /* 备用文字 Logo */
+        .logo-circle-fallback { 
+            width: 32px; height: 32px; background: white; color: var(--wuyin-red); 
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; font-size: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+            display: none; 
+        }
+
         .app-title { font-size: 18px; font-weight: 700; line-height: 1; display: flex; flex-direction: column; }
         
-        /* 切换按钮样式 */
+        /* 切换按钮 */
         .day-tag { 
             font-size: 11px; background: rgba(255,255,255,0.25); padding: 3px 8px; border-radius: 12px; 
             width: fit-content; margin-top: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.3);
@@ -59,7 +82,7 @@
         .content-area { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 40px; }
         .cards-wrapper { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
         
-        /* 卡片样式 (几何对齐) */
+        /* 卡片样式 */
         .card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #F3F4F6; display: flex; gap: 16px; }
         .card-left { width: 45px; border-right: 1px solid #F3F4F6; display: flex; flex-direction: column; align-items: center; padding-top: 0; flex-shrink: 0; }
         .hour-aligner { height: 52px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -85,17 +108,9 @@
         }
         .status-next .car-text { color: rgba(255,255,255,0.9) !important; }
 
-        .booked-border {
-            border: 2px solid var(--gold-border) !important;
-            position: relative;
-        }
-        .booked-border::after {
-            content: '⏰'; font-size: 8px; position: absolute; top: 1px; right: 2px;
-        }
-        .status-next.booked-border {
-            box-shadow: 0 0 0 2px var(--gold-border), 0 4px 12px rgba(185, 28, 28, 0.4) !important;
-            border: none !important;
-        }
+        .booked-border { border: 2px solid var(--gold-border) !important; position: relative; }
+        .booked-border::after { content: '⏰'; font-size: 8px; position: absolute; top: 1px; right: 2px; }
+        .status-next.booked-border { box-shadow: 0 0 0 2px var(--gold-border), 0 4px 12px rgba(185, 28, 28, 0.4) !important; border: none !important; }
 
         /* 弹窗样式 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 50; display: none; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
@@ -103,20 +118,16 @@
         @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; color: #1F2937; }
         .modal-subtitle { font-size: 13px; color: #6B7280; margin-bottom: 20px; border-bottom: 1px solid #F3F4F6; padding-bottom: 10px; }
-        
         .reminder-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
         .reminder-btn { padding: 10px; border-radius: 8px; border: 1px solid #E5E7EB; background: #F9FAFB; color: #374151; font-size: 13px; cursor: pointer; text-align: center; }
         .reminder-btn.selected { background: var(--wuyin-red); color: white; border-color: var(--wuyin-red); }
-        
         .custom-input-group { display: flex; align-items: center; background: #F3F4F6; border-radius: 8px; padding: 4px 12px; margin-bottom: 20px; border: 1px solid transparent; }
         .custom-input-group:focus-within { border-color: var(--wuyin-red); background: white; }
         .custom-input { border: none; background: transparent; width: 100%; padding: 8px 0; font-size: 16px; font-weight: bold; color: #374151; text-align: center; }
-        
         .action-btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 10px; }
         .btn-confirm { background: var(--wuyin-red); color: white; }
         .btn-delete { background: white; border: 1px solid #EF4444; color: #EF4444; margin-top: 8px; }
         .btn-close { background: transparent; color: #9CA3AF; margin-top: 5px; }
-
         .booking-list { overflow-y: auto; flex: 1; }
         .booking-item { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--wuyin-red); }
         .booking-info { display: flex; flex-direction: column; }
@@ -128,7 +139,7 @@
 </head>
 <body>
 
-    <!-- 弹窗组件 -->
+    <!-- 弹窗 1：设置提醒 -->
     <div class="modal-overlay" id="reminderModal">
         <div class="modal">
             <div class="modal-title">设置提醒</div>
@@ -148,6 +159,7 @@
         </div>
     </div>
 
+    <!-- 弹窗 2：我的预约 -->
     <div class="modal-overlay" id="myBookingsModal">
         <div class="modal" style="height: 60vh;">
             <div class="modal-title">我的预约</div>
@@ -157,6 +169,7 @@
         </div>
     </div>
 
+    <!-- 弹窗 3：管理预约 -->
     <div class="modal-overlay" id="editModal">
         <div class="modal">
             <div class="modal-title">管理预约</div>
@@ -167,6 +180,7 @@
         </div>
     </div>
 
+    <!-- 弹窗 4：删除确认 -->
     <div class="modal-overlay" id="confirmDeleteModal">
         <div class="modal">
             <div class="modal-title" style="color:#EF4444;">确认删除?</div>
@@ -176,10 +190,13 @@
         </div>
     </div>
 
-    <!-- 主界面 -->
+    <!-- 主界面 Header -->
     <div class="header">
         <div class="logo-area">
-            <div class="logo-circle">武</div>
+            <!-- 自动加载 logo.png -->
+            <img src="logo.png" class="logo-img" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='flex'">
+            <div id="logo-fallback" class="logo-circle-fallback">武</div>
+            
             <div class="app-title">
                 <span>武音班车</span>
                 <span class="day-tag" id="day-tag" onclick="toggleDayMode()">加载中...</span>
