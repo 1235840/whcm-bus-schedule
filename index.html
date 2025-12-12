@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>武音班车助手</title>
     
-    <!-- ✅ 新增：设置网页图标 (浏览器标签页显示) -->
+    <!-- 设置图标 -->
     <link rel="icon" href="logo.png" type="image/png">
-    <!-- ✅ 新增：设置苹果桌面图标 (添加到主屏幕时显示) -->
     <link rel="apple-touch-icon" href="logo.png">
 
     <style>
@@ -22,18 +21,31 @@
         .header { background-color: var(--wuyin-red); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 30; flex-shrink: 0; }
         .logo-area { display: flex; align-items: center; gap: 10px; }
         
-        /* Logo 图片样式 - 已修复白边问题 */
-        .logo-img {
-            width: 34px; height: 34px;
+        /* --- Logo 核心修复样式 --- */
+        /* 1. 外层容器：负责定大小和裁剪圆角 */
+        .logo-wrapper {
+            width: 40px; height: 40px; /* 稍微加大一点，更显眼 */
             border-radius: 50%;
-            background: transparent; /* 改为透明背景 */
-            object-fit: cover;
-            display: block;
-            /* 移除了 border 属性 */
+            background: transparent; /* 去掉白色背景 */
+            overflow: hidden; /* 关键：裁剪掉超出的部分 */
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            /* 如果需要极细的分割线可以保留下面这行，不需要则删除 */
+            /* border: 1px solid rgba(255,255,255,0.1); */ 
         }
+
+        /* 2. 图片本身：负责放大以去除白边 */
+        .logo-img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transform: scale(1.15); /* 关键：放大1.15倍，把白边挤出去 */
+            display: block;
+            border: none; /* 确保没有边框 */
+        }
+
         /* 备用文字 Logo */
         .logo-circle-fallback { 
-            width: 32px; height: 32px; background: white; color: var(--wuyin-red); 
+            width: 40px; height: 40px; background: white; color: var(--wuyin-red); 
             border-radius: 50%; display: flex; align-items: center; justify-content: center; 
             font-weight: bold; font-size: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
             display: none; 
@@ -190,8 +202,10 @@
     <!-- 主界面 -->
     <div class="header">
         <div class="logo-area">
-            <!-- 自动加载 logo.png -->
-            <img src="logo.png" class="logo-img" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='flex'">
+            <!-- 核心修复：添加 logo-wrapper 容器 -->
+            <div class="logo-wrapper">
+                <img src="logo.png" class="logo-img" onerror="this.parentElement.style.display='none'; document.getElementById('logo-fallback').style.display='flex'">
+            </div>
             <div id="logo-fallback" class="logo-circle-fallback">武</div>
             
             <div class="app-title">
@@ -238,18 +252,10 @@
             return routes.map(route => {
                 const table = [];
                 const endHour = route.isBinjiangOrigin ? 22 : 21;
-                // 7:30 是半点 -> 2号车
                 table.push(["07:30", "2"]); 
                 for (let h = 8; h <= endHour; h++) {
                     const hour = h.toString().padStart(2, '0');
-                    if (h === 22) { 
-                        // 22:00 -> 1号车
-                        table.push(["22:00", "1"]); 
-                    } else { 
-                        // 整点 -> 1号, 半点 -> 2号
-                        table.push([`${hour}:00`, "1"]); 
-                        table.push([`${hour}:30`, "2"]); 
-                    }
+                    if (h === 22) { table.push(["22:00", "1"]); } else { table.push([`${hour}:00`, "1"]); table.push([`${hour}:30`, "2"]); }
                 }
                 return { id: route.id, nameFrom: route.nameFrom, nameTo: route.nameTo, table: table };
             });
@@ -341,12 +347,10 @@
 
                     // === 核心逻辑分支 ===
                     if (!isSameDayType) {
-                        // 穿越模式：今天不是该表单的有效日期
-                        // 逻辑：所有车次都是“无效/不可达”的 -> 视为“已过”
+                        // 穿越模式
                         statusClass = showHistory ? "status-future" : "status-past-gray";
-                        // 穿越模式不显示红色高亮
                     } else {
-                        // 同频模式：正常时间对比
+                        // 同频模式
                         const isPastTime = itemTotalMin < currentTotalMin;
                         if (isPastTime) {
                             statusClass = showHistory ? "status-future" : "status-past-gray";
@@ -362,7 +366,6 @@
                     const chip = document.createElement('div');
                     chip.className = `chip ${statusClass} ${extraClass}`;
                     
-                    // 修复：显示车号 (週末逻辑已在 generateWeekendData 中处理)
                     let contentHtml = `<div class="min-text">${item.m}</div>`;
                     if (item.car && item.car.trim() !== "") {
                         contentHtml += `<div class="car-text">${item.car}号</div>`;
