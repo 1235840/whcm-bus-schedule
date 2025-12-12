@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>武音班车助手</title>
     
-    <!-- ✅ 新增：设置网页图标 (浏览器标签页显示) -->
     <link rel="icon" href="logo.png" type="image/png">
-    <!-- ✅ 新增：设置苹果桌面图标 (添加到主屏幕时显示) -->
     <link rel="apple-touch-icon" href="logo.png">
 
     <style>
@@ -20,22 +18,28 @@
         
         /* 顶部 Header */
         .header { background-color: var(--wuyin-red); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 30; flex-shrink: 0; }
-        .logo-area { display: flex; align-items: center; gap: 10px; }
+        .logo-area { display: flex; align-items: center; gap: 12px; }
         
-        /* Logo 图片样式 */
-        .logo-img {
-            width: 34px; height: 34px;
+        /* --- Logo 核心修复代码 --- */
+        .logo-wrapper {
+            width: 40px; height: 40px; /* 设定 Logo 大小 */
             border-radius: 50%;
-            background: white;
-            border: 2px solid rgba(255,255,255,0.2);
+            background: white; /* 纯白底色 */
+            overflow: hidden; /* 关键：裁剪溢出部分 */
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid rgba(255,255,255,0.3); /* 外层装饰性白圈，如果不想要可以删掉这行 */
+            flex-shrink: 0;
+        }
+        .logo-img {
+            width: 100%; height: 100%;
             object-fit: cover;
-            display: block;
+            transform: scale(1.15); /* 关键：放大 1.15 倍，把原图的白边挤出去 */
         }
         /* 备用文字 Logo */
         .logo-circle-fallback { 
-            width: 32px; height: 32px; background: white; color: var(--wuyin-red); 
+            width: 40px; height: 40px; background: white; color: var(--wuyin-red); 
             border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-            font-weight: bold; font-size: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+            font-weight: bold; font-size: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
             display: none; 
         }
 
@@ -128,7 +132,7 @@
         .btn-confirm { background: var(--wuyin-red); color: white; }
         .btn-delete { background: white; border: 1px solid #EF4444; color: #EF4444; margin-top: 8px; }
         .btn-close { background: transparent; color: #9CA3AF; margin-top: 5px; }
-        .booking-list { overflow-y: auto; flex: 1; }
+        .booking-list { overflow-y: auto; flex: 1; max-height: 50vh; }
         .booking-item { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--wuyin-red); }
         .booking-info { display: flex; flex-direction: column; }
         .booking-route { font-size: 12px; color: #6B7280; }
@@ -139,7 +143,7 @@
 </head>
 <body>
 
-    <!-- 弹窗 1：设置提醒 -->
+    <!-- 弹窗组件 -->
     <div class="modal-overlay" id="reminderModal">
         <div class="modal">
             <div class="modal-title">设置提醒</div>
@@ -159,7 +163,6 @@
         </div>
     </div>
 
-    <!-- 弹窗 2：我的预约 -->
     <div class="modal-overlay" id="myBookingsModal">
         <div class="modal" style="height: 60vh;">
             <div class="modal-title">我的预约</div>
@@ -169,7 +172,6 @@
         </div>
     </div>
 
-    <!-- 弹窗 3：管理预约 -->
     <div class="modal-overlay" id="editModal">
         <div class="modal">
             <div class="modal-title">管理预约</div>
@@ -180,7 +182,6 @@
         </div>
     </div>
 
-    <!-- 弹窗 4：删除确认 -->
     <div class="modal-overlay" id="confirmDeleteModal">
         <div class="modal">
             <div class="modal-title" style="color:#EF4444;">确认删除?</div>
@@ -190,11 +191,13 @@
         </div>
     </div>
 
-    <!-- 主界面 Header -->
+    <!-- 主界面 -->
     <div class="header">
         <div class="logo-area">
-            <!-- 自动加载 logo.png -->
-            <img src="logo.png" class="logo-img" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='flex'">
+            <!-- 核心修改：Logo容器 + 放大图片 -->
+            <div class="logo-wrapper">
+                <img src="logo.png" class="logo-img" onerror="this.parentElement.style.display='none'; document.getElementById('logo-fallback').style.display='flex'">
+            </div>
             <div id="logo-fallback" class="logo-circle-fallback">武</div>
             
             <div class="app-title">
